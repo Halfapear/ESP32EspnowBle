@@ -12,6 +12,9 @@ C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/bootloader.elf.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/size.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/size-files.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/size-components.dir
+C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/dfu.dir
+C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/dfu-list.dir
+C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/dfu-flash.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/edit_cache.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/CMakeFiles/rebuild_cache.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/CMakeFiles/edit_cache.dir
@@ -57,8 +60,8 @@ C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_system/CMakeFiles/r
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_hw_support/CMakeFiles/__idf_esp_hw_support.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_hw_support/CMakeFiles/edit_cache.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_hw_support/CMakeFiles/rebuild_cache.dir
-C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_hw_support/port/esp32/CMakeFiles/edit_cache.dir
-C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_hw_support/port/esp32/CMakeFiles/rebuild_cache.dir
+C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_hw_support/port/esp32s3/CMakeFiles/edit_cache.dir
+C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_hw_support/port/esp32s3/CMakeFiles/rebuild_cache.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_common/CMakeFiles/__idf_esp_common.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_common/CMakeFiles/edit_cache.dir
 C:/Users/17831/ESPIDF/espnow-bt/build/bootloader/esp-idf/esp_common/CMakeFiles/rebuild_cache.dir
