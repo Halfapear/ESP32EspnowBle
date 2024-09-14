@@ -1,0 +1,23 @@
+CMake Error:
+  Running
+
+   'C:/Users/17831/ESPIDF/esp/tools/tools/ninja/1.11.1/ninja.exe' '-C' 'C:/Users/17831/ESPIDF/esp/frameworks/esp-idf-v5.2.2/examples/bluetooth/bluedroid/ble/gatt_server/build' '-t' 'recompact'
+
+  failed with:
+
+   ninja: error: failed recompaction: Permission denied
+
+
+
+CMake Error:
+  Running
+
+   'C:/Users/17831/ESPIDF/esp/tools/tools/ninja/1.11.1/ninja.exe' '-C' 'C:/Users/17831/ESPIDF/esp/frameworks/esp-idf-v5.2.2/examples/bluetooth/bluedroid/ble/gatt_server/build' '-t' 'restat' 'build.ninja'
+
+  failed with:
+
+   ninja: error: failed recompaction: Permission denied
+
+
+
+CMake Generate step failed.  Build files cannot be regenerated correctly.
