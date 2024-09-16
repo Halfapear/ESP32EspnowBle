@@ -97,7 +97,7 @@ typedef struct {
 #define PROFILE_APP_ID 0
 
 // 设备名称
-#define DEVICE_NAME "ESP_NOW_BLE_DEMO"
+#define DEVICE_NAME "ESP"
 
 // BLE 服务和特征 UUID
 #define SERVICE_UUID   0x00FF

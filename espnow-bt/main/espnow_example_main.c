@@ -87,11 +87,6 @@ static esp_ble_adv_data_t scan_rsp_data = {
     .flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
 };
 
-static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM];
-
-/* 准备写入环境变量 */
-static prepare_type_env_t prepare_write_env;
-
 /* 函数声明 */
 static void example_espnow_deinit(example_espnow_send_param_t *send_param);
 static void example_wifi_init(void);
@@ -99,6 +94,17 @@ static void init_ble(void);
 static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
 static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+
+/* GATT 配置文件实例 */
+static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
+    [PROFILE_APP_ID] = {
+        .gatts_cb = gatts_profile_event_handler,
+        .gatts_if = ESP_GATT_IF_NONE,
+    },
+};
+
+/* 准备写入环境变量 */
+// static prepare_type_env_t prepare_write_env; // 如果未使用，可以注释掉以避免编译警告
 
 /* Wi-Fi 初始化 */
 static void example_wifi_init(void)
@@ -564,7 +570,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
         }
         adv_config_done |= adv_config_flag;
 
-        // 配置扫描响应数据
+        // 使用 esp_ble_gap_config_adv_data 配置扫描响应数据
         ret = esp_ble_gap_config_adv_data(&scan_rsp_data);
         if (ret){
             ESP_LOGE(BLE_TAG, "配置扫描响应数据失败，错误代码 = %x", ret);
@@ -573,6 +579,7 @@ static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_
 
         esp_ble_gatts_create_service(gatts_if, &gl_profile_tab[PROFILE_APP_ID].service_id, GATTS_NUM_HANDLE_TEST_A);
         break;
+
     case ESP_GATTS_CREATE_EVT:
         ESP_LOGI(BLE_TAG, "CREATE_SERVICE_EVT, status %d, service_handle %d", param->create.status, param->create.service_handle);
         gl_profile_tab[PROFILE_APP_ID].service_handle = param->create.service_handle;
