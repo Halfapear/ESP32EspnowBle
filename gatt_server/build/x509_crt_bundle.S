@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/17831/ESPIDF/esp/frameworks/esp-idf-v5.2.2/examples/bluetooth/bluedroid/ble/gatt_server/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from C:/Users/17831/ESPIDF/gatt_server/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

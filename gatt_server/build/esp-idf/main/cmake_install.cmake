@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/17831/ESPIDF/esp/frameworks/esp-idf-v5.2.2/examples/bluetooth/bluedroid/ble/gatt_server/main
+# Install script for directory: C:/Users/17831/ESPIDF/gatt_server/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

@@ -1,6 +1,6 @@
 /* Automatically generated file; DO NOT EDIT */
 /* Espressif IoT Development Framework Linker Script */
-/* Generated from: C:\Users\17831\ESPIDF\esp\frameworks\esp-idf-v5.2.2\examples\bluetooth\bluedroid\ble\gatt_server\build\esp-idf\esp_system\ld\sections.ld.in */
+/* Generated from: C:\Users\17831\ESPIDF\gatt_server\build\esp-idf\esp_system\ld\sections.ld.in */
 
 /*
 

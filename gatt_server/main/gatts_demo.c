@@ -32,16 +32,20 @@
 #include "esp_bt_main.h"
 #include "esp_gatt_common_api.h"
 
+#include "esp_timer.h"
+
+
 #include "sdkconfig.h"
 
 
 static esp_timer_handle_t periodic_timer;
-static esp_gatt_if_t gatts_if_for_timer = NULL;
+static esp_gatt_if_t gatts_if_for_timer = 0;
 static uint16_t conn_id_for_timer = 0;
 static uint16_t char_handle_for_timer = 0;
 static int send_count = 1;
+static bool notify_enabled = false;
 
-
+void periodic_timer_callback(void* arg);
 
 #define GATTS_TAG "GATTS_DEMO"
 
@@ -369,34 +373,62 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
              param->write.conn_id, param->write.trans_id, param->write.handle);
 
     if (!param->write.is_prep) {
-        // 输出 “Halfapear收到信息啦”
-        ESP_LOGI(GATTS_TAG, "Halfapear收到信息啦");
+        ESP_LOGI(GATTS_TAG, "GATT_WRITE_EVT, value len %d, value :", param->write.len);
+        esp_log_buffer_hex(GATTS_TAG, param->write.value, param->write.len);
 
-        // 获取手机发送的数据
-        uint16_t len = param->write.len;
-        uint8_t *data = param->write.value;
+        // 处理客户端特征配置描述符（CCCD）的写入
+        if (param->write.handle == gl_profile_tab[PROFILE_A_APP_ID].descr_handle && param->write.len == 2) {
+            uint16_t descr_value = param->write.value[1] << 8 | param->write.value[0];
+            if (descr_value == 0x0001) {
+                // 启用通知
+                ESP_LOGI(GATTS_TAG, "Notifications enabled");
+                notify_enabled = true;
+            } else if (descr_value == 0x0000) {
+                // 禁用通知
+                ESP_LOGI(GATTS_TAG, "Notifications disabled");
+                notify_enabled = false;
+            } else {
+                ESP_LOGE(GATTS_TAG, "Unknown CCCD value");
+            }
+        } else if (param->write.handle == gl_profile_tab[PROFILE_A_APP_ID].char_handle) {
+            // 处理特征值的写入（即接收客户端发送的数据）
+            ESP_LOGI(GATTS_TAG, "Received data from client");
 
-        // 将接收到的数据转换为字符串（确保数据长度适当）
-        char received_str[100];
-        if (len < sizeof(received_str)) {
-            memcpy(received_str, data, len);
-            received_str[len] = '\0'; // 添加字符串结束符
+            uint16_t len = param->write.len;
+            uint8_t *data = param->write.value;
 
-            // 判断是否为 “BUPT”
-            if (strcmp(received_str, "BUPT") == 0) {
-                // 发送 “中秋节快乐” 给手机
-                uint8_t response_data[] = "中秋节快乐";
-                esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id,
-                                            gl_profile_tab[PROFILE_A_APP_ID].char_handle,
-                                            sizeof(response_data), response_data, false);
+            // 将接收到的数据转换为字符串（假设UTF-8编码）
+            char received_str[100];
+            if (len < sizeof(received_str)) {
+                memcpy(received_str, data, len);
+                received_str[len] = '\0';
+
+                // 在日志中输出 "Halfapear收到信息啦"
+                ESP_LOGI(GATTS_TAG, "Halfapear收到信息啦");
+
+                // 判断是否为字符串 "BUPT"
+                if (strcmp(received_str, "BUPT") == 0) {
+                    // 发送 "中秋节快乐" 给客户端
+                    const char *response_str = "中秋节快乐";
+                    size_t response_len = strlen(response_str);
+
+                    esp_err_t ret = esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id,
+                                                                gl_profile_tab[PROFILE_A_APP_ID].char_handle,
+                                                                response_len, (uint8_t *)response_str, false);
+                    if (ret != ESP_OK) {
+                        ESP_LOGE(GATTS_TAG, "Failed to send indication: %s", esp_err_to_name(ret));
+                    }
+                }
+            } else {
+                ESP_LOGE(GATTS_TAG, "Received data length exceeds buffer size");
             }
         }
     }
 
-    // 保持原有代码，处理可能的预备写入
+    // 保持原有的预备写入处理代码
     example_write_event_env(gatts_if, &a_prepare_write_env, param);
     break;
-    }
+}
 
     case ESP_GATTS_EXEC_WRITE_EVT:
         ESP_LOGI(GATTS_TAG,"ESP_GATTS_EXEC_WRITE_EVT");
@@ -465,38 +497,40 @@ static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_i
     case ESP_GATTS_STOP_EVT:
         break;
     case ESP_GATTS_CONNECT_EVT: {
-    // 保存必要的参数
-    gatts_if_for_timer = gatts_if;
-    conn_id_for_timer = param->connect.conn_id;
-    char_handle_for_timer = gl_profile_tab[PROFILE_A_APP_ID].char_handle;
+        // 保存必要的参数
+        gatts_if_for_timer = gatts_if;
+        conn_id_for_timer = param->connect.conn_id;
+        char_handle_for_timer = gl_profile_tab[PROFILE_A_APP_ID].char_handle;
 
-    // 创建定时器
-    const esp_timer_create_args_t periodic_timer_args = {
-        .callback = &periodic_timer_callback,
-        .arg = NULL,
-        .name = "periodic_timer"
-    };
-    esp_timer_create(&periodic_timer_args, &periodic_timer);
+        // 创建定时器
+        const esp_timer_create_args_t periodic_timer_args = {
+            .callback = &periodic_timer_callback,
+            .arg = NULL,
+            .name = "periodic_timer"
+        };
+        esp_timer_create(&periodic_timer_args, &periodic_timer);
 
-    // 启动定时器（每 5 秒触发一次）
-    esp_timer_start_periodic(periodic_timer, 5000000); // 5,000,000 微秒 = 5 秒
+        // 启动定时器（每 5 秒触发一次）
+        esp_timer_start_periodic(periodic_timer, 5000000); // 5,000,000 微秒 = 5 秒
 
-    break;
-}
-
-case ESP_GATTS_DISCONNECT_EVT:
-    // 停止并删除定时器
-    if (periodic_timer != NULL) {
-        esp_timer_stop(periodic_timer);
-        esp_timer_delete(periodic_timer);
-        periodic_timer = NULL;
-        send_count = 1; // 重置计数器
+        break;
     }
+    case ESP_GATTS_DISCONNECT_EVT:
+        // 停止并删除定时器
+        if (periodic_timer != NULL) {
+            esp_timer_stop(periodic_timer);
+            esp_timer_delete(periodic_timer);
+            periodic_timer = NULL;
+            send_count = 1; // 重置计数器
+        }
 
-    // 重新开始广播
-    esp_ble_gap_start_advertising(&adv_params);
+        // 重置通知使能标志
+        notify_enabled = false;
 
-    break;
+        // 重新开始广播
+        esp_ble_gap_start_advertising(&adv_params);
+
+        break;
 
     case ESP_GATTS_OPEN_EVT:
     case ESP_GATTS_CANCEL_OPEN_EVT:
@@ -750,19 +784,31 @@ void app_main(void)
 
 
 void periodic_timer_callback(void* arg) {
-    if (gatts_if_for_timer == NULL || char_handle_for_timer == 0) {
+    ESP_LOGI(GATTS_TAG, "Timer callback triggered");
+    if (gatts_if_for_timer == 0 || char_handle_for_timer == 0) {
         return;
     }
 
-    // 构建要发送的字符串
-    char notify_data[50];
-    snprintf(notify_data, sizeof(notify_data), "嘟噜噜 连接成功×%d", send_count++);
+    if (!notify_enabled) {
+        ESP_LOGI(GATTS_TAG, "Notifications not enabled by client");
+        return;
+    }
 
-    // 发送通知
-    esp_ble_gatts_send_indicate(gatts_if_for_timer,
-                                conn_id_for_timer,
-                                char_handle_for_timer,
-                                strlen(notify_data),
-                                (uint8_t*)notify_data,
-                                false);
+    char notify_data[50];
+    snprintf(notify_data, sizeof(notify_data), "Dululu ConSuc%d", send_count++);
+    //嘟噜噜 连接成功×%d
+
+    //将 dululu 以及其内容打印到 ESP32 的日志中
+    ESP_LOGI(GATTS_TAG, "%s", notify_data);  // 打印 dululu 到日志
+
+
+    esp_err_t ret = esp_ble_gatts_send_indicate(gatts_if_for_timer,
+                                                conn_id_for_timer,
+                                                char_handle_for_timer,
+                                                strlen(notify_data),
+                                                (uint8_t*)notify_data,
+                                                false);
+    if (ret != ESP_OK) {
+        ESP_LOGE(GATTS_TAG, "Failed to send notification: %s", esp_err_to_name(ret));
+    }
 }
