@@ -1,108 +1,96 @@
-/* 设备 B（ESP32 S3）代码 */
-
-#include <stdio.h>
 #include <string.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "esp_event.h"
-#include "esp_wifi.h"
+#include <stdio.h>
 #include "esp_now.h"
+#include "esp_wifi.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
-#include "esp_system.h"
+#include "driver/gpio.h"
+#include "esp_netif.h"
+#include "esp_event.h"
 
-// 日志标签
-static const char *TAG = "Device B";
+#define LED_GPIO GPIO_NUM_48  // LED 连接的 GPIO 引脚
 
-// 将此处替换为设备 A（ESP32 WROOM-32）的实际 MAC 地址
-uint8_t peer_mac[ESP_NOW_ETH_ALEN] = { 0x11, 0x22, 0x33, 0x44, 0x55, 0x66 };  // 占位符
+static const char *TAG = "ESP-NOW Receiver";
 
-// ESPNOW 接收回调函数
-void espnow_recv_cb(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len)
-{
-    if (data == NULL || len <= 0) {
-        ESP_LOGE(TAG, "接收回调错误：数据为空或长度 <= 0");
+// 发送器的 MAC 地址（已更新为实际地址）
+uint8_t peer_addr[6] = {0x2C, 0xBC, 0xBB, 0x4C, 0x66, 0x1C};
+
+// 接收回调函数
+void on_receive(const esp_now_recv_info_t *recv_info, const uint8_t *data, int len) {
+    if (len < 1) {
+        ESP_LOGW(TAG, "Received empty message");
         return;
     }
 
     // 将接收到的数据转换为字符串
-    char message[250];
-    if (len >= sizeof(message)) {
-        len = sizeof(message) - 1;
-    }
+    char message[len + 1];
     memcpy(message, data, len);
-    message[len] = '\0';  // 确保以 null 终止
+    message[len] = '\0';
 
-    ESP_LOGI(TAG, "收到来自 " MACSTR " 的消息: %s", MAC2STR(recv_info->src_addr), message);
+    ESP_LOGI(TAG, "Received message: %s", message);
 
-    // 处理消息
-    if (strcmp(message, "Halfapear") == 0) {
-        ESP_LOGI(TAG, "收到定时消息。");
-        // 添加处理定时消息的代码
-    } else if (strcmp(message, "Halfapear 获得高电平") == 0) {
-        ESP_LOGI(TAG, "收到高电平触发消息。");
-        // 添加处理高电平触发的代码
+    if (strcmp(message, "led on") == 0) {
+        gpio_set_level(LED_GPIO, 1);
+        ESP_LOGI(TAG, "LED turned ON");
+    } else if (strcmp(message, "led off") == 0) {
+        gpio_set_level(LED_GPIO, 0);
+        ESP_LOGI(TAG, "LED turned OFF");
     } else {
-        ESP_LOGW(TAG, "收到未知消息。");
+        ESP_LOGW(TAG, "Unknown command");
     }
 }
 
-// 初始化 Wi-Fi 为站点模式
-static void wifi_init(void)
-{
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_t *sta_netif = esp_netif_create_default_wifi_sta();
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    // 设置 Wi-Fi 模式为站点模式
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-    ESP_ERROR_CHECK(esp_wifi_start());
-}
-
-// 初始化 ESPNOW
-static void espnow_init(void)
-{
-    // 初始化 ESPNOW
+void init_esp_now() {
+    // 初始化 ESP-NOW
     ESP_ERROR_CHECK(esp_now_init());
+
     // 注册接收回调函数
-    ESP_ERROR_CHECK(esp_now_register_recv_cb(espnow_recv_cb));
+    ESP_ERROR_CHECK(esp_now_register_recv_cb(on_receive));
 
-    // 如果需要，设置主密钥（PMK）
-    // ESP_ERROR_CHECK(esp_now_set_pmk((uint8_t *)"pmk1234567890123"));
+    // 添加对等设备
+    esp_now_peer_info_t peer_info = {0};
+    memcpy(peer_info.peer_addr, peer_addr, 6);
+    peer_info.channel = 0;  // 使用默认频道
+    peer_info.encrypt = false;
 
-    // 添加对端信息
-    esp_now_peer_info_t peerInfo = {};
-    memcpy(peerInfo.peer_addr, peer_mac, ESP_NOW_ETH_ALEN);
-    peerInfo.channel = 0;  // 0 表示当前频道，或设置特定频道
-    peerInfo.ifidx = ESP_IF_WIFI_STA;
-    peerInfo.encrypt = false;  // 如果需要加密，设置为 true
+    ESP_ERROR_CHECK(esp_now_add_peer(&peer_info));
 
-    // 添加对端
-    ESP_ERROR_CHECK(esp_now_add_peer(&peerInfo));
+    ESP_LOGI(TAG, "ESP-NOW initialized and peer added");
 }
 
-void app_main(void)
-{
+void init_gpio() {
+    // 配置 LED 引脚为输出
+    // 如果需要调用 gpio_pad_select_gpio，可以使用 esp_rom_gpio_pad_select_gpio
+    // esp_rom_gpio_pad_select_gpio(LED_GPIO);  // 可选，根据需要启用
+
+    gpio_set_direction(LED_GPIO, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_GPIO, 0);  // 初始关闭 LED
+}
+
+void app_main(void) {
     // 初始化 NVS
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        // NVS 分区已损坏，需要擦除
         ESP_ERROR_CHECK(nvs_flash_erase());
         ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
 
-    // 初始化 Wi-Fi
-    wifi_init();
+    // 初始化网络接口和事件循环
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    // 打印自身的 MAC 地址
-    uint8_t mac[6];
-    ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_STA));
-    ESP_LOGI(TAG, "设备 B MAC 地址: " MACSTR, MAC2STR(mac));
+    // 配置 Wi-Fi 为 STA 模式
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_start());
 
-    // 初始化 ESPNOW
-    espnow_init();
+    // 初始化 GPIO
+    init_gpio();
+
+    // 初始化 ESP-NOW
+    init_esp_now();
+
+    ESP_LOGI(TAG, "Receiver is running...");
 }
