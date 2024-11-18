@@ -12,3 +12,6 @@
 ## [EspnowBleS3](https://github.com/Halfapear/ESP32bt-espnow/tree/main/EspnowBleS3) 测试完成的s3的espnow&ble；
 - 是上面的融合 s3端；
 - 解决了一些内存问题
+
+## 记录的流程
+csdn[[现学现卖]esp32入门流程推荐与踩坑指南](https://blog.csdn.net/halfapear/article/details/142534830) （本来想直接放hexo上的 但那时候域名还没备案好）
